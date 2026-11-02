@@ -1,0 +1,22 @@
+services:
+  shelly-mcp:
+    # Fertiges Image aus der GitHub Container Registry (per GitHub Actions gebaut).
+    # Das Repo ist privat, darum ist auch das Image privat: Portainer braucht dafür
+    # eine Registry (ghcr.io) mit Zugangsdaten.
+    image: ghcr.io/kimthurnherr/shelly-mcp:latest
+    pull_policy: always
+    container_name: shelly-mcp
+    restart: unless-stopped
+    environment:
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
+      # Licht/Relais über die Shelly Cloud (Shelly-App > Benutzereinstellungen > Authorization cloud key)
+      - SHELLY_CLOUD_SERVER=${SHELLY_CLOUD_SERVER}
+      - SHELLY_CLOUD_AUTH_KEY=${SHELLY_CLOUD_AUTH_KEY}
+      # BLU TRV über BLU Gateway Gen3, kommagetrennt "Name=http://IP"
+      - SHELLY_GATEWAYS=${SHELLY_GATEWAYS:-}
+      - SHELLY_GATEWAY_PASSWORD=${SHELLY_GATEWAY_PASSWORD:-}
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+    ports:
+      # Standard nur localhost; für den Nginx Proxy Manager MCP_BIND_ADDR auf die LAN-IP des Hosts setzen.
+      - "${MCP_BIND_ADDR:-127.0.0.1}:${MCP_HOST_PORT:-8430}:8000"
