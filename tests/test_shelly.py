@@ -26,19 +26,29 @@ class Recorder:
         return httpx.Response(status, json=body, request=httpx.Request("POST", url))
 
 
-GW_STATUS = {"blutrv:200": {"id": 200, "current_C": 19.5, "target_C": 21, "pos": 30, "battery": 90, "rssi": -70}}
-GW_CONFIG = {"blutrv:200": {"id": 200, "name": "Wohnzimmer"}}
+LISTS = {"isok": True, "data": {
+    "devices": {
+        "a1b2c3d4e5f6": {"name": "Esstisch", "room_id": 1, "category": "light"},
+        "2cf43268c9e5": {"name": "Reduit", "room_id": 2, "category": "relay"},
+        "aabbccddeeff": {"name": "Gateway", "room_id": 1, "category": "gateway", "ip": "192.0.2.10"},
+        "aabbccddeeff_2200": {"name": "Wohnzimmer", "room_id": 1, "category": "thermostat"},
+    },
+    "rooms": {"1": {"name": "Stube"}, "2": {"name": "Keller"}}}}
+GW_CLOUD = [{"id": "aabbccddeeff", "online": 1, "status": {
+    "blutrv:200": {"id": 200, "battery": 90, "rssi": -60},
+    "blutrv_rstatus:200": {"status": {"trv:0": {"current_C": 19.5, "target_C": 21, "pos": 30}}}}}]
 
 
-def gw_handler(url, kw):
-    m = kw["json"]["method"]
-    if m == "Shelly.GetStatus":
-        return 200, {"id": 1, "result": GW_STATUS}
-    if m == "Shelly.GetConfig":
-        return 200, {"id": 1, "result": GW_CONFIG}
-    if m == "BluTrv.Call":
-        return 200, {"id": 1, "result": None}
-    return 200, {"id": 1, "error": {"code": -114, "message": "nope"}}
+def handler(url, kw):
+    if url.endswith("/interface/device/get_all_lists"):
+        return 200, LISTS
+    if url.endswith("/v2/devices/api/get"):
+        return 200, GW_CLOUD
+    if url.startswith("http://192.0.2.10"):
+        if kw["json"]["method"] == "BluTrv.Call":
+            return 200, {"id": 1, "result": None}
+        return 200, {"id": 1, "result": {"blutrv:200": {}}}
+    return 404, None
 
 
 class Tests(unittest.TestCase):
@@ -99,40 +109,44 @@ class Tests(unittest.TestCase):
                                      "light:0": {"output": True, "brightness": 50}},
                     "2cf43268c9e5": {"_dev_info": {"gen": "G1", "online": True, "code": "SHSW-1"},
                                      "relays": [{"ison": False}]}}}}
-            return 200, [{"id": "a1b2c3d4e5f6", "settings": {"sys": {"device": {"name": "Esstisch"}}}},
-                         {"id": "2cf43268c9e5", "settings": {"name": "Reduit"}}]
+            return handler(url, kw)
+        s._lists_cache.update(ts=0.0, data=None)
         httpx.post = Recorder(h)
         res = s.list_devices()
-        names = {d["id"]: d["name"] for d in res["devices"]}
-        self.assertEqual(names, {"a1b2c3d4e5f6": "Esstisch", "2cf43268c9e5": "Reduit"})
-        esstisch = next(d for d in res["devices"] if d["id"] == "a1b2c3d4e5f6")
-        self.assertEqual(esstisch["lights"][0]["brightness"], 50)
+        by = {d["id"]: d for d in res["devices"]}
+        self.assertEqual(by["a1b2c3d4e5f6"]["name"], "Esstisch")
+        self.assertEqual(by["a1b2c3d4e5f6"]["room"], "Stube")
+        self.assertEqual(by["a1b2c3d4e5f6"]["lights"][0]["brightness"], 50)
+        self.assertEqual(by["2cf43268c9e5"]["switches"][0]["name"], "Reduit")
 
     def test_trv_list_and_set_by_name(self):
-        rec = Recorder(gw_handler)
+        s._lists_cache.update(ts=0.0, data=None)
+        rec = Recorder(handler)
         httpx.post = rec
         lst = s.list_trvs()
-        self.assertEqual(lst["trvs"][0]["name"], "Wohnzimmer")
+        t = lst["trvs"][0]
+        self.assertEqual((t["name"], t["room"], t["current_c"], t["target_c"]), ("Wohnzimmer", "Stube", 19.5, 21))
         res = s.set_trv_target("wohnzimmer", 21.55)
-        call = rec.calls[-1][1]["json"]
-        self.assertEqual(call["method"], "BluTrv.Call")
-        self.assertEqual(call["params"], {"id": 200, "method": "TRV.SetTarget",
-                                          "params": {"id": 0, "target_C": 21.6}})
+        url, kw = rec.calls[-1]
+        self.assertEqual(url, "http://192.0.2.10/rpc")
+        self.assertEqual(kw["json"]["params"], {"id": 200, "method": "TRV.SetTarget",
+                                                "params": {"id": 0, "target_C": 21.6}})
         self.assertTrue(res["success"])
 
-    def test_trv_by_gateway_id_skips_lookup(self):
-        rec = Recorder(gw_handler)
+    def test_trv_boost_by_id(self):
+        s._lists_cache.update(ts=0.0, data=None)
+        rec = Recorder(handler)
         httpx.post = rec
-        s.set_trv_boost("Wohnung:200", duration=600)
-        self.assertEqual(len(rec.calls), 1)
-        self.assertEqual(rec.calls[0][1]["json"]["params"]["params"], {"id": 0, "duration": 600})
+        s.set_trv_boost("aabbccddeeff:200", duration=600)
+        self.assertEqual(rec.calls[-1][1]["json"]["params"]["params"], {"id": 0, "duration": 600})
 
     def test_trv_validation(self):
         with self.assertRaises(ValueError):
-            s.set_trv_target("Wohnung:200", 35)
+            s.set_trv_target("Wohnzimmer", 35)
         with self.assertRaises(ValueError):
-            s.set_trv_override("Wohnung:200", duration=5)
-        httpx.post = Recorder(gw_handler)
+            s.set_trv_override("Wohnzimmer", duration=5)
+        s._lists_cache.update(ts=0.0, data=None)
+        httpx.post = Recorder(handler)
         with self.assertRaises(ValueError):
             s.set_trv_target("Keller", 20)
 

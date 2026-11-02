@@ -2,7 +2,7 @@
 name = "shelly-mcp"
 # Nur Major.Minor wird von Hand gepflegt, der Patch-Teil wird automatisch
 # aus der Git-Historie gezaehlt (siehe _read_version im Paket).
-version = "0.1.0"
+version = "0.2.0"
 description = "Shelly MCP Server (Licht über Shelly Cloud, BLU TRV über BLU Gateway Gen3) für Claude"
 requires-python = ">=3.11"
 dependencies = [
