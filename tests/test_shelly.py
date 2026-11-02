@@ -150,6 +150,50 @@ class Tests(unittest.TestCase):
         with self.assertRaises(ValueError):
             s.set_trv_target("Keller", 20)
 
+
+    def _scene_handler(self):
+        scenes = {"isok": True, "data": {"scene_scripts": {"1764245018369": {
+            "_enabled": True, "_id": "1764245018369", "_name": "1764245018369", "_file_modtag": "x",
+            "_meta": {"name": "Heizung aus", "roomn": "General"},
+            "if": {"or": []}, "do": [{"r": "dev:%d:tgt2200" % int("aabbccddeeff", 16), "set": 14}]}}}}
+
+        def h(url, kw):
+            if url.endswith("/scene/list"):
+                return 200, scenes
+            if url.endswith(("/scene/enable", "/scene/manual_run", "/scene/edit")):
+                return 200, {"isok": True}
+            return handler(url, kw)
+        return h
+
+    def test_scenes(self):
+        s._lists_cache.update(ts=0.0, data=None)
+        rec = Recorder(self._scene_handler())
+        httpx.post = rec
+        lst = s.list_scenes()
+        self.assertEqual(lst["scenes"][0]["actions"][0]["target"], "Wohnzimmer [tgt2200]")
+        prev = s.run_scene("heizung aus")
+        self.assertTrue(prev["preview"])
+        self.assertFalse(any(u.endswith("/scene/manual_run") for u, _ in rec.calls))
+        s.run_scene("Heizung aus", confirm=True)
+        self.assertEqual(rec.calls[-1][1]["data"]["id"], "1764245018369")
+        self.assertFalse(s.set_scene_enabled("Heizung aus", True)["executed"])
+        s.set_scene_enabled("1764245018369", False)
+        self.assertEqual(rec.calls[-1][1]["data"]["enabled"], "false")
+
+    def test_edit_scene(self):
+        rec = Recorder(self._scene_handler())
+        httpx.post = rec
+        new_do = [{"r": "dev:1:tgt2200", "set": 16}]
+        prev = s.edit_scene("Heizung aus", {"do": new_do})
+        self.assertTrue(prev["preview"])
+        out = s.edit_scene("Heizung aus", {"do": new_do}, confirm=True)
+        body = json.loads(rec.calls[-1][1]["data"]["scene_script"])
+        self.assertEqual(body["do"], new_do)
+        self.assertNotIn("_file_modtag", body)
+        self.assertEqual(out["previous_script"]["do"][0]["set"], 14)
+        with self.assertRaises(ValueError):
+            s.edit_scene("Heizung aus", {"_id": "1"})
+
     def test_gateway_parsing(self):
         os.environ["SHELLY_GATEWAYS"] = "http://192.0.2.10, Buero=192.0.2.11"
         try:

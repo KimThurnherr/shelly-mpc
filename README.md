@@ -22,6 +22,10 @@ Läuft ausschliesslich als Docker-Container (Streamable HTTP) hinter einem Rever
 | `set_trv_target` | Solltemperatur dauerhaft setzen (4-30 °C) |
 | `set_trv_override` / `clear_trv_override` | Temporäre Solltemperatur für eine Dauer |
 | `set_trv_boost` / `clear_trv_boost` | Ventil für eine Dauer voll öffnen |
+| `list_scenes` / `get_scene` | Szenen der Shelly-App mit Aktionen und Bedingungen bzw. vollständigem Skript |
+| `run_scene` | Szene sofort einmal ausführen (nur mit `confirm=true`) |
+| `set_scene_enabled` | Szene aktivieren/deaktivieren |
+| `edit_scene` | Szenen-Skript ändern, ohne `confirm=true` nur Vorschau, altes Skript in der Antwort |
 | `gateway_status` | Diagnose: lokale Erreichbarkeit der Gateways (Geräte-ID, Modell, Firmware) |
 
 Namen und Räume kommen aus der Shelly-App (`/interface/device/get_all_lists`, 5 Minuten gecacht). TRVs werden über ihren Namen aus der App, die Komponenten-ID (z.B. `200`) oder `gateway_id:200` angesprochen. Gelesen wird über die Cloud, Befehle gehen lokal an das Gateway, das per IP aus der App einem Eintrag in `SHELLY_GATEWAYS` zugeordnet wird.
@@ -41,6 +45,8 @@ Namen und Räume kommen aus der Shelly-App (`/interface/device/get_all_lists`, 5
 | `MCP_BIND_ADDR` / `MCP_HOST_PORT` | nein | Port-Mapping auf dem Docker-Host (Standard `127.0.0.1:8439`) |
 
 ## Hinweise
+
+- Szenen sind nicht Teil der offiziellen Cloud API. Genutzt werden die Endpunkte der Shelly-App (`/scene/list`, `/scene/get`, `/scene/manual_run`, `/scene/enable`, `/scene/edit`), die Shelly jederzeit ändern kann.
 
 - Die Cloud erlaubt 1 Request pro Sekunde und Konto. Der Server drosselt selbst und wiederholt einmal bei HTTP 429.
 - Der auth_key erscheint nie in Antworten oder Logs.
