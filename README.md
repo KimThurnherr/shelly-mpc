@@ -22,7 +22,7 @@ Läuft ausschliesslich als Docker-Container (Streamable HTTP) hinter einem Rever
 | `set_trv_target` | Solltemperatur dauerhaft setzen (4-30 °C) |
 | `set_trv_override` / `clear_trv_override` | Temporäre Solltemperatur für eine Dauer |
 | `set_trv_boost` / `clear_trv_boost` | Ventil für eine Dauer voll öffnen |
-| `gateway_status` | Diagnose: lokale Erreichbarkeit der Gateways und ihre TRV-Komponenten |
+| `gateway_status` | Diagnose: lokale Erreichbarkeit der Gateways (Geräte-ID, Modell, Firmware) |
 
 Namen und Räume kommen aus der Shelly-App (`/interface/device/get_all_lists`, 5 Minuten gecacht). TRVs werden über ihren Namen aus der App, die Komponenten-ID (z.B. `200`) oder `gateway_id:200` angesprochen. Gelesen wird über die Cloud, Befehle gehen lokal an das Gateway, das per IP aus der App einem Eintrag in `SHELLY_GATEWAYS` zugeordnet wird.
 

@@ -544,14 +544,14 @@ def get_trv(trv: str) -> dict:
 
 
 def gateway_status() -> dict:
-    """Lokale Erreichbarkeit der konfigurierten BLU Gateways und ihre TRV-Komponenten (Diagnose)."""
+    """Diagnose: lokale Erreichbarkeit der konfigurierten BLU Gateways (Geraete-ID, Modell, Firmware)."""
     out = []
     for gw in _gateways():
         try:
-            st = _gw_rpc(gw, "Shelly.GetStatus") or {}
-            out.append({"gateway": gw["name"], "reachable": True,
-                        "trv_components": sorted(k for k in st if k.startswith("blutrv:")),
-                        "component_count": len(st)})
+            info = _gw_rpc(gw, "Shelly.GetDeviceInfo") or {}
+            out.append({"gateway": gw["name"], "reachable": True, "device_id": info.get("id"),
+                        "model": info.get("model"), "firmware": info.get("ver"),
+                        "auth_enabled": info.get("auth_en")})
         except Exception as e:
             out.append({"gateway": gw["name"], "reachable": False,
                         "error": str(e) if isinstance(e, ShellyError) else _exc_text(e)})
@@ -688,7 +688,7 @@ TOOLS = [
              "required": ["trv"]}),
     Tool(name="clear_trv_boost", description="Boost beenden.",
          inputSchema={"type": "object", "properties": {"trv": _TRV_PROP}, "required": ["trv"]}),
-    Tool(name="gateway_status", description="Diagnose: Sind die konfigurierten BLU Gateways lokal erreichbar, welche TRVs melden sie.",
+    Tool(name="gateway_status", description="Diagnose: Sind die konfigurierten BLU Gateways lokal erreichbar (Geräte-ID, Modell, Firmware).",
          inputSchema={"type": "object", "properties": {}}),
 ]
 
