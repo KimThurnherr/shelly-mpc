@@ -19,4 +19,4 @@ services:
       - MCP_PORT=8000
     ports:
       # Standard nur localhost; für den Nginx Proxy Manager MCP_BIND_ADDR auf die LAN-IP des Hosts setzen.
-      - "${MCP_BIND_ADDR:-127.0.0.1}:${MCP_HOST_PORT:-8430}:8000"
+      - "${MCP_BIND_ADDR:-127.0.0.1}:${MCP_HOST_PORT:-8439}:8000"

@@ -36,7 +36,7 @@ TRVs werden über ihren Namen aus der Shelly-App, die Komponenten-ID (z.B. `200`
 | `SHELLY_GATEWAY_PASSWORD` | nein | Passwort der Gateways (Digest-Auth, Benutzer `admin`), falls gesetzt |
 | `SHELLY_HTTP_TIMEOUT` | nein | Timeout in Sekunden (Standard 15) |
 | `SHELLY_TRV_CALL_TIMEOUT` | nein | Timeout für Befehle an ein TRV (Standard 65, Shelly nennt bis zu einer Minute) |
-| `MCP_BIND_ADDR` / `MCP_HOST_PORT` | nein | Port-Mapping auf dem Docker-Host (Standard `127.0.0.1:8430`) |
+| `MCP_BIND_ADDR` / `MCP_HOST_PORT` | nein | Port-Mapping auf dem Docker-Host (Standard `127.0.0.1:8439`) |
 
 ## Hinweise
 
