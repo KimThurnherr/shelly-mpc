@@ -732,6 +732,11 @@ def with_healthz(app):
             scope = dict(scope)
             scope["path"] = re.sub(r"/{2,}", "/", scope["path"])
             scope["raw_path"] = scope["path"].encode()
+        prefix = os.environ.get("MCP_PATH_PREFIX", "").rstrip("/")
+        if scope["type"] == "http" and prefix and (scope["path"] == prefix or scope["path"].startswith(prefix + "/")):
+            scope = dict(scope)
+            scope["path"] = scope["path"][len(prefix):] or "/"
+            scope["raw_path"] = scope["path"].encode()
         if scope["type"] == "http" and scope["path"] == "/healthz" and scope["method"] in ("GET", "HEAD"):
             await JSONResponse({"status": "ok"})(scope, receive, send)
             return

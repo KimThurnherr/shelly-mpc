@@ -157,6 +157,13 @@ class AuthTests(unittest.TestCase):
             self.assertEqual(c.get("/healthz").status_code, 200)
             self.assertEqual(c.post("/mcp", json={}).status_code, 401)
             self.assertEqual(c.get("http://testserver//healthz").status_code, 200)
+        os.environ["MCP_PATH_PREFIX"] = "/shelly"
+        try:
+            with TestClient(s.build_http_app("x" * 40)) as c:
+                self.assertEqual(c.get("/shelly/healthz").status_code, 200)
+                self.assertEqual(c.post("/shelly/mcp", json={}).status_code, 401)
+        finally:
+            del os.environ["MCP_PATH_PREFIX"]
 
 
 if __name__ == "__main__":

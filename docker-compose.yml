@@ -15,6 +15,8 @@ services:
       # BLU TRV über BLU Gateway Gen3, kommagetrennt "Name=http://IP"
       - SHELLY_GATEWAYS=${SHELLY_GATEWAYS:-}
       - SHELLY_GATEWAY_PASSWORD=${SHELLY_GATEWAY_PASSWORD:-}
+      # Pfad-Präfix hinter einer Proxy-Location ohne Umschreiben, z.B. /shelly (leer = keiner)
+      - MCP_PATH_PREFIX=${MCP_PATH_PREFIX:-}
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8000
     ports:
