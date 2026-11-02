@@ -580,7 +580,9 @@ def _ref_label(ref: str, entries: dict) -> str:
         return str(ref)
     did = format(int(m.group(1)), "x").rjust(6, "0")
     attr, num = m.group(2), m.group(3)
-    e = (entries.get(f"{did}_{num}") if num else None) or entries.get(did) or {}
+    # Szenen zaehlen Kanaele ab 1 (r3 = Kanal 2, tgt2201 = App-Kanal 2200)
+    ch = int(num) - 1 if num else 0
+    e = _entry(entries, did, ch) or entries.get(did) or {}
     return f"{e.get('name') or did} [{attr}{num}]"
 
 

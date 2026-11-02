@@ -155,7 +155,7 @@ class Tests(unittest.TestCase):
         scenes = {"isok": True, "data": {"scene_scripts": {"1764245018369": {
             "_enabled": True, "_id": "1764245018369", "_name": "1764245018369", "_file_modtag": "x",
             "_meta": {"name": "Heizung aus", "roomn": "General"},
-            "if": {"or": []}, "do": [{"r": "dev:%d:tgt2200" % int("aabbccddeeff", 16), "set": 14}]}}}}
+            "if": {"or": []}, "do": [{"r": "dev:%d:tgt2201" % int("aabbccddeeff", 16), "set": 14}]}}}}
 
         def h(url, kw):
             if url.endswith("/scene/list"):
@@ -170,7 +170,7 @@ class Tests(unittest.TestCase):
         rec = Recorder(self._scene_handler())
         httpx.post = rec
         lst = s.list_scenes()
-        self.assertEqual(lst["scenes"][0]["actions"][0]["target"], "Wohnzimmer [tgt2200]")
+        self.assertEqual(lst["scenes"][0]["actions"][0]["target"], "Wohnzimmer [tgt2201]")
         prev = s.run_scene("heizung aus")
         self.assertTrue(prev["preview"])
         self.assertFalse(any(u.endswith("/scene/manual_run") for u, _ in rec.calls))
