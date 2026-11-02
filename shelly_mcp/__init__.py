@@ -181,14 +181,19 @@ def _cloud_post(path: str, *, json_body: dict | None = None, form: dict | None =
     """POST an die Cloud. v2: JSON-Body, auth_key als Query. v1 (Legacy): Formular inkl. auth_key."""
     server, key = _cloud_server(), _cloud_key()
     url = f"{server}{path}"
+    global _cloud_last
     with _cloud_lock:
         for attempt in range(2):
             _cloud_throttle()
-            if form is not None:
-                r = httpx.post(url, data={**form, "auth_key": key}, timeout=HTTP_TIMEOUT)
-            else:
-                r = httpx.post(url, params={"auth_key": key}, json=json_body or {}, timeout=HTTP_TIMEOUT)
-            if r.status_code == 429 and attempt == 0:
+            try:
+                if form is not None:
+                    r = httpx.post(url, data={**form, "auth_key": key}, timeout=HTTP_TIMEOUT)
+                else:
+                    r = httpx.post(url, params={"auth_key": key}, json=json_body or {}, timeout=HTTP_TIMEOUT)
+            finally:
+                # Abstand ab Ende der Antwort messen: die Cloud lehnt zu dichte Folgeaufrufe teils mit 401/429 ab
+                _cloud_last = time.monotonic()
+            if r.status_code in (401, 429) and attempt == 0:
                 time.sleep(2)
                 continue
             break
