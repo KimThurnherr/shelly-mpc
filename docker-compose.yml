@@ -3,7 +3,7 @@ services:
     # Fertiges Image aus der GitHub Container Registry (per GitHub Actions gebaut).
     # Das Repo ist privat, darum ist auch das Image privat: Portainer braucht dafür
     # eine Registry (ghcr.io) mit Zugangsdaten.
-    image: ghcr.io/kimthurnherr/shelly-mcp:latest
+    image: ghcr.io/kimthurnherr/shelly-mpc:latest
     pull_policy: always
     container_name: shelly-mcp
     restart: unless-stopped
