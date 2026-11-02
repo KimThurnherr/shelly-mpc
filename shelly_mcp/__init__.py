@@ -727,6 +727,11 @@ def with_healthz(app):
     from starlette.responses import JSONResponse
 
     async def router(scope, receive, send):
+        # Hinter einer Reverse-Proxy-Location (z.B. /shelly/ -> /) kann der Pfad mit "//" ankommen
+        if scope["type"] == "http" and "//" in scope.get("path", ""):
+            scope = dict(scope)
+            scope["path"] = re.sub(r"/{2,}", "/", scope["path"])
+            scope["raw_path"] = scope["path"].encode()
         if scope["type"] == "http" and scope["path"] == "/healthz" and scope["method"] in ("GET", "HEAD"):
             await JSONResponse({"status": "ok"})(scope, receive, send)
             return

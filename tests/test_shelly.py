@@ -156,6 +156,7 @@ class AuthTests(unittest.TestCase):
         with TestClient(app) as c:
             self.assertEqual(c.get("/healthz").status_code, 200)
             self.assertEqual(c.post("/mcp", json={}).status_code, 401)
+            self.assertEqual(c.get("//healthz").status_code, 200)
 
 
 if __name__ == "__main__":
