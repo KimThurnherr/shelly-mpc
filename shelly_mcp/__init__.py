@@ -565,7 +565,7 @@ def gateway_status() -> dict:
 
 # ---------------------------------------------------------------------------
 # Szenen (Cloud-Szenen der Shelly-App). Nicht Teil der offiziellen Cloud API:
-# /scene/list, /scene/get, /scene/manual_run, /scene/enable, /scene/edit (Legacy-App-API).
+# /scene/list, /scene/get, /scene/manual_run, /scene/enable, /scene/edit, /scene/add (Legacy-App-API).
 # ---------------------------------------------------------------------------
 _SCENE_ID_RE = re.compile(r"^\d{6,20}$")
 _DEV_REF_RE = re.compile(r"dev:(\d+):([a-z_]+?)(\d*)$")
@@ -702,6 +702,56 @@ def edit_scene(scene: str, changes: dict, confirm: bool = False) -> dict:
     return {"executed": True, "id": sid, "name": (new.get("_meta") or {}).get("name"), "previous_script": sc}
 
 
+def create_scene(name: str, script: dict | None = None, copy_from: str | None = None,
+                 enabled: bool = True, confirm: bool = False) -> dict:
+    """Neue Szene anlegen. Entweder ein vollstaendiges Skript (mind. 'if' und 'do') oder copy_from (bestehende
+    Szene als Vorlage), in die script wie bei edit_scene gemischt wird. Ohne confirm=true nur Vorschau."""
+    name = (name or "").strip()
+    if not name or len(name) > 100:
+        raise ValueError("name: 1-100 Zeichen")
+    if script is not None and not isinstance(script, dict):
+        raise ValueError("script: JSON-Objekt (siehe get_scene)")
+    if not isinstance(enabled, bool):
+        raise ValueError("enabled muss true oder false sein")
+    script = script or {}
+    if len(json.dumps(script)) > 20000:
+        raise ValueError("script zu gross")
+    if any(k in script for k in _SCENE_SCRIPT_KEYS_READONLY):
+        raise ValueError(f"Felder {list(_SCENE_SCRIPT_KEYS_READONLY)} werden von der Cloud vergeben")
+    raw = _scenes_raw()
+    if any(((sc.get("_meta") or {}).get("name") or "").strip().lower() == name.lower() for sc in raw.values()):
+        raise ValueError(f"Es gibt bereits eine Szene '{name}'")
+
+    if copy_from:
+        src_id, src = _find_scene(copy_from)
+        base = {k: v for k, v in src.items() if k not in _SCENE_SCRIPT_KEYS_READONLY}
+    else:
+        src_id = None
+        base = {"_run_on_ingest": True, "_meta": {"room": -1, "roomn": "General"}}
+
+    def merge(b, upd):
+        if isinstance(b, dict) and isinstance(upd, dict):
+            out = dict(b)
+            for k, v in upd.items():
+                out[k] = merge(b.get(k), v) if k in b else v
+            return out
+        return upd
+
+    body = merge(base, script)
+    body["_enabled"] = enabled
+    body["_meta"] = {**(body.get("_meta") or {}), "name": name}
+    if not isinstance(body.get("if"), dict) or not isinstance(body.get("do"), list) or not body["do"]:
+        raise ValueError("Skript braucht 'if' (Objekt) und 'do' (Liste mit mind. einer Aktion)")
+    if confirm is not True:
+        entries, _ = _app_entries()
+        return {"preview": True, "executed": False, "copied_from": src_id,
+                "summary": _scene_summary("neu", body, entries), "script": body,
+                "hint": "Zum Anlegen mit confirm=true wiederholen."}
+    res = _cloud_post("/scene/add", form={"scene_script": json.dumps(body, ensure_ascii=False)}) or {}
+    new_id = str(((res.get("data") or {}) if isinstance(res, dict) else {}).get("scene_id") or "")
+    return {"executed": True, "id": new_id or None, "name": name, "enabled": enabled, "copied_from": src_id}
+
+
 def _temp(value, lo=4.0, hi=30.0) -> float:
     try:
         t = round(float(value), 1)
@@ -772,6 +822,7 @@ TOOL_FUNCS = {
     "run_scene": run_scene,
     "set_scene_enabled": set_scene_enabled,
     "edit_scene": edit_scene,
+    "create_scene": create_scene,
 }
 
 _TRV_PROP = {"type": "string", "description": "Name des TRV (wie in der Shelly-App), Komponenten-ID (z.B. 200) oder 'gateway_id:200'"}
@@ -859,6 +910,17 @@ TOOLS = [
          inputSchema={"type": "object", "properties": {"scene": _SCENE_PROP, "changes": {"type": "object"},
                                                        "confirm": {"type": "boolean", "default": False}},
                       "required": ["scene", "changes"]}),
+    Tool(name="create_scene",
+         description="Neue Szene anlegen. script = Skript wie bei get_scene (mind. 'if' und 'do'), oder copy_from = "
+                     "bestehende Szene als Vorlage, in die script gemischt wird (Listen wie 'if'/'do' werden ersetzt). "
+                     "Ohne confirm=true nur Vorschau.",
+         inputSchema={"type": "object", "properties": {
+             "name": {"type": "string", "description": "Name der neuen Szene"},
+             "script": {"type": "object"},
+             "copy_from": {"type": "string", "description": "Szenen-ID oder exakter Name der Vorlage"},
+             "enabled": {"type": "boolean", "default": True},
+             "confirm": {"type": "boolean", "default": False}},
+             "required": ["name"]}),
 ]
 
 

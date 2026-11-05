@@ -194,6 +194,31 @@ class Tests(unittest.TestCase):
         with self.assertRaises(ValueError):
             s.edit_scene("Heizung aus", {"_id": "1"})
 
+    def test_create_scene(self):
+        base = self._scene_handler()
+
+        def h(url, kw):
+            if url.endswith("/scene/add"):
+                return 200, {"isok": True, "data": {"scene_id": "1793900000001"}}
+            return base(url, kw)
+        rec = Recorder(h)
+        httpx.post = rec
+        new_do = [{"r": "dev:1:tgt2201", "set": 14}]
+        prev = s.create_scene("Heizung aus Freitag", {"do": new_do}, copy_from="Heizung aus")
+        self.assertTrue(prev["preview"])
+        self.assertFalse(any(u.endswith("/scene/add") for u, _ in rec.calls))
+        out = s.create_scene("Heizung aus Freitag", {"do": new_do}, copy_from="Heizung aus", confirm=True)
+        self.assertEqual(out["id"], "1793900000001")
+        body = json.loads(rec.calls[-1][1]["data"]["scene_script"])
+        self.assertEqual(body["_meta"]["name"], "Heizung aus Freitag")
+        self.assertEqual(body["do"], new_do)
+        self.assertNotIn("_id", body)
+        self.assertNotIn("_file_modtag", body)
+        with self.assertRaises(ValueError):
+            s.create_scene("heizung aus", {"if": {"or": []}, "do": new_do})
+        with self.assertRaises(ValueError):
+            s.create_scene("Ohne Aktion", {"if": {"or": []}})
+
     def test_gateway_parsing(self):
         os.environ["SHELLY_GATEWAYS"] = "http://192.0.2.10, Buero=192.0.2.11"
         try:
